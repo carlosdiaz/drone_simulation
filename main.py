@@ -13,46 +13,132 @@ window.size = config.WINDOW_SIZE
 window.color = color.rgb32(120, 180, 220)
 
 
-def create_arena() -> None:
-    """Build a compact arena entirely from Ursina primitives."""
+def create_tree(position: tuple[float, float, float], scale: float = 1.0) -> None:
+    """Create a stylized evergreen with a collidable trunk."""
+    x, y, z = position
+    Entity(model="cube", color=color.rgb32(92, 62, 38), position=(x, y + 1.2 * scale, z),
+           scale=(.38 * scale, 2.4 * scale, .38 * scale), collider="box")
+    for height, width in ((2.0, 2.3), (2.8, 1.8), (3.5, 1.25)):
+        Entity(model="diamond", color=color.rgb32(38, 105, 54),
+               position=(x, y + height * scale, z),
+               scale=(width * scale, 1.5 * scale, width * scale))
+
+
+def create_hangar(position: tuple[float, float, float], size, accent) -> None:
+    """Create an industrial hangar with a recessed dark doorway."""
+    x, y, z = position
+    width, height, depth = size
+    Entity(model="cube", color=color.rgb32(118, 130, 138), position=position,
+           scale=size, collider="box")
+    Entity(model="cube", color=color.rgb32(47, 54, 59),
+           position=(x, y - .15, z - depth / 2 - .03),
+           scale=(width * .62, height * .7, .08))
+    Entity(model="cube", color=accent, position=(x, y + height / 2 + .08, z),
+           scale=(width + .35, .18, depth + .35))
+    for offset in (-width * .32, 0, width * .32):
+        Entity(model="cube", color=color.rgb32(185, 205, 214),
+               position=(x + offset, y + height * .25, z - depth / 2 - .08),
+               scale=(width * .15, .35, .05))
+
+
+def create_outdoor_range() -> None:
+    """Build a detailed outdoor drone-training airfield from primitives."""
     arena = config.ARENA_SIZE
-    Entity(name="ground", model="plane", texture="white_cube", texture_scale=(arena, arena),
-           scale=arena, color=color.rgb32(80, 135, 70), collider="box")
-    # High-contrast strips make horizontal motion visible from the chase camera.
-    for offset in range(-30, 31, 10):
-        Entity(model="cube", color=color.rgba32(220, 220, 190, 120),
-               position=(offset, .025, 0), scale=(.08, .025, 68))
-        Entity(model="cube", color=color.rgba32(220, 220, 190, 120),
-               position=(0, .026, offset), scale=(68, .025, .08))
-    wall_color = color.rgb32(105, 110, 120)
+    Entity(name="ground", model="plane", texture="white_cube", texture_scale=(24, 24),
+           scale=arena, color=color.rgb32(72, 122, 66), collider="box")
+
+    # A paved service road, runway, shoulder markings, and central taxiway.
+    asphalt = color.rgb32(54, 60, 64)
+    Entity(model="cube", color=asphalt, position=(25, .035, 0), scale=(16, .035, 88))
+    Entity(model="cube", color=asphalt, position=(0, .04, -20), scale=(52, .04, 8))
+    for z in range(-42, 45, 8):
+        Entity(model="cube", color=color.rgba32(245, 235, 185, 210),
+               position=(25, .07, z), scale=(.22, .025, 3.2))
+    for x in range(-22, 24, 5):
+        Entity(model="cube", color=color.rgba32(245, 210, 60, 220),
+               position=(x, .075, -20), scale=(2.4, .025, .12))
+
+    # Two distinct training compounds create depth and navigation landmarks.
+    create_hangar((-27, 3, -3), (13, 6, 12), color.rgb32(35, 140, 185))
+    create_hangar((10, 2.5, 28), (12, 5, 9), color.rgb32(220, 145, 45))
+    create_hangar((36, 2.2, 22), (9, 4.4, 11), color.rgb32(75, 165, 100))
+
+    # Control tower with wraparound blue observation windows and roof antenna.
+    Entity(model="cube", color=color.rgb32(185, 187, 180), position=(-38, 4.5, 25),
+           scale=(5, 9, 5), collider="box")
+    Entity(model="cube", color=color.rgb32(45, 105, 135), position=(-38, 9.5, 25),
+           scale=(7, 2.1, 7), collider="box")
+    Entity(model="cube", color=color.rgb32(43, 48, 52), position=(-38, 10.7, 25),
+           scale=(7.5, .25, 7.5))
+    Entity(model="cube", color=color.rgb32(210, 75, 55), position=(-38, 12.2, 25),
+           scale=(.12, 3, .12))
+
+    # Cargo stacks and safety barriers make the low-altitude course readable.
+    container_colors = (color.rgb32(190, 68, 52), color.rgb32(42, 105, 150),
+                        color.rgb32(205, 145, 40))
+    for index, (x, z) in enumerate(((-19, 16), (-13, 16), (-16, 21), (15, -3))):
+        Entity(model="cube", color=container_colors[index % 3],
+               position=(x, 1.25, z), scale=(5.2, 2.5, 2.4), collider="box")
+        for stripe in (-1.8, -.6, .6, 1.8):
+            Entity(model="cube", color=color.rgba32(235, 235, 225, 90),
+                   position=(x + stripe, 1.25, z - 1.23), scale=(.07, 2.1, .03))
+
+    # Trees frame the play area while keeping the mission route unobstructed.
+    tree_positions = (
+        (-44, 0, -36), (-35, 0, -38), (-24, 0, -40), (-12, 0, -42),
+        (40, 0, -35), (43, 0, -22), (44, 0, -8), (43, 0, 8),
+        (-45, 0, 5), (-44, 0, 15), (-30, 0, 40), (-18, 0, 43),
+        (18, 0, 43), (31, 0, 40), (43, 0, 36),
+    )
+    for index, tree_position in enumerate(tree_positions):
+        create_tree(tree_position, .8 + (index % 3) * .14)
+
+    # Distant low-poly hills hide the invisible safety boundary.
+    for x, z, height, width in (
+        (-45, 47, 18, 24), (-20, 49, 13, 22), (8, 50, 17, 27),
+        (35, 48, 14, 22), (-49, -20, 11, 18), (49, 8, 13, 20),
+    ):
+        Entity(model="diamond", color=color.rgb32(72, 96, 70),
+               position=(x, height * .33, z), scale=(width, height, width))
+
+    # Boundary posts imply fencing; transparent colliders enforce the geofence.
+    fence_color = color.rgb32(150, 158, 158)
+    for offset in range(-48, 49, 6):
+        for x, z in ((offset, -49), (offset, 49), (-49, offset), (49, offset)):
+            Entity(model="cube", color=fence_color, position=(x, 1.25, z),
+                   scale=(.10, 2.5, .10))
     for position, scale in (
-        ((0, 2, arena / 2), (arena, 4, 1)),
-        ((0, 2, -arena / 2), (arena, 4, 1)),
-        ((arena / 2, 2, 0), (1, 4, arena)),
-        ((-arena / 2, 2, 0), (1, 4, arena)),
+        ((0, 2, 50), (100, 4, .4)), ((0, 2, -50), (100, 4, .4)),
+        ((50, 2, 0), (.4, 4, 100)), ((-50, 2, 0), (.4, 4, 100)),
     ):
-        Entity(model="cube", color=wall_color, position=position, scale=scale, collider="box")
+        Entity(model="cube", color=color.rgba32(0, 0, 0, 0),
+               position=position, scale=scale, collider="box")
 
-    for position, scale, building_color in (
-        ((-15, 2, 2), (7, 4, 7), color.rgb32(150, 130, 105)),
-        ((12, 3, 8), (9, 6, 6), color.rgb32(125, 140, 155)),
-        ((0, 1.5, 20), (6, 3, 8), color.rgb32(165, 145, 115)),
-        ((20, 2, -10), (5, 4, 10), color.rgb32(115, 130, 145)),
+    # Layered clouds and a warm horizon give the sky visual depth without shaders.
+    for x, y, z, cloud_scale in (
+        (-30, 24, 18, 4), (15, 28, 38, 5), (38, 22, -18, 3.6), (-42, 27, -20, 4.5),
     ):
-        Entity(model="cube", color=building_color, position=position,
-               scale=scale, collider="box")
+        for dx, dy, size in ((-1.6, 0, 1.5), (0, .45, 2.0), (1.8, 0, 1.4)):
+            Entity(model="sphere", color=color.rgba32(245, 248, 250, 205),
+                   position=(x + dx * cloud_scale / 3, y + dy, z),
+                   scale=(size * cloud_scale, cloud_scale * .55, cloud_scale * .7))
 
-    Entity(name="landing_pad", model="cube", color=color.rgb32(45, 45, 50),
-           position=(0, .08, -20), scale=(7, .12, 7), collider="box")
-    Entity(model="cube", color=color.yellow, position=(0, .16, -20),
-           scale=(3.2, .03, .45))
-    Entity(model="cube", color=color.yellow, position=(0, .16, -20),
-           scale=(.45, .03, 3.2))
+    # Landing pad and beacon lights remain the mission's visual anchor.
+    Entity(name="landing_pad", model="cube", color=color.rgb32(38, 43, 47),
+           position=(0, .11, -20), scale=(8, .18, 8), collider="box")
+    Entity(model="circle", color=color.rgb32(235, 202, 40), position=(0, .22, -20),
+           rotation_x=90, scale=5.8, double_sided=True)
+    Entity(model="cube", color=color.rgb32(38, 43, 47), position=(0, .24, -20),
+           scale=(2.8, .04, .42))
+    Entity(model="cube", color=color.rgb32(38, 43, 47), position=(0, .24, -20),
+           scale=(.42, .04, 2.8))
+    for x, z in ((-3.4, -23.4), (3.4, -23.4), (-3.4, -16.6), (3.4, -16.6)):
+        Entity(model="sphere", color=color.lime, position=(x, .32, z), scale=.18)
 
-    Sky(color=color.rgb32(120, 185, 235))
+    Sky(color=color.rgb32(105, 175, 225))
 
 
-create_arena()
+create_outdoor_range()
 drone = Drone()
 hud = FlightHUD()
 score = 0

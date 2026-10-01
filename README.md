@@ -87,3 +87,11 @@ all flight, camera, collision, crash, and target systems remain available, but
 mission objectives do not advance.
 
 Phase 4 completes the original prototype scope.
+
+## Outdoor training range
+
+The Phase 4 environment is a purpose-built outdoor airfield assembled entirely
+from Ursina primitives. It includes paved service roads, runway markings,
+multiple hangars, a control tower, cargo containers, trees, perimeter fencing,
+distant hills, layered clouds, safety barriers, and an illuminated landing pad.
+These visual additions require no external models or texture downloads.
